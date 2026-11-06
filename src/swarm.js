@@ -1113,8 +1113,15 @@
         keyFn = () => (zTop || 0) * 1e7 + (posd ? 5e6 : 0) + order++;
       }
 
-      if (isStackCtx && !ctx.stackingCtx) {
-        nextStackCtx = { baseKey: (zTop || 0) * 1e7 + (posd ? 5e6 : 0) + order };
+      if (isStackCtx) {
+        const selfBase = ctx.stackingCtx
+          ? (zIndexVal !== null && zIndexVal < 0
+              ? ctx.stackingCtx.baseKey + 100000 + zIndexVal * 1000
+              : pos !== "static" || flexItem
+                ? ctx.stackingCtx.baseKey + 300000 + (zIndexVal || 0) * 1000
+                : ctx.stackingCtx.baseKey + 200000)
+          : (zTop || 0) * 1e7 + (posd ? 5e6 : 0);
+        nextStackCtx = { baseKey: selfBase + order };
       }
       if (layer === "over" && ctx.layer !== "over" && r.top <= 4 && r.width >= vw * 0.8 && r.height > 20 && r.height <= 200) {
         bars.push({ node: null, r, start: items.length, key: (zTop || 0) * 1e7 + (posd ? 5e6 : 0) + order - 0.5 });
