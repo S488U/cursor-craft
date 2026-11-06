@@ -620,8 +620,10 @@
       const rg = document.createRange();
       rg.selectNodeContents(el);
       const tr = rg.getBoundingClientRect();
-      // table cells center their content vertically; reproduce the offset
-      if (cs.display === "table-cell" && tr.height) root.style.paddingTop = Math.max(0, tr.top - r.top) + "px";
+      // table cells and buttons center their content vertically; reproduce the offset
+      if ((cs.display === "table-cell" || el.localName === "button" || el.getAttribute("role") === "button") && tr.height) {
+        root.style.paddingTop = Math.max(0, tr.top - r.top) + "px";
+      }
       // floats outside the leaf (figures, infoboxes) shape its line boxes: add invisible shims
       if (/^(block|list-item)$/.test(root.style.display)) {
         const n = (p) => parseFloat(cs.getPropertyValue(p)) || 0;
@@ -1415,7 +1417,10 @@
       for (const b of bars) {
         const area = b.r.width * b.r.height;
         const covered = items.some(
-          (it) => it.id >= b.start && it.layer === "over" && it.kind === "rect" && it.w * it.h >= area * 0.85 && /rgba?\(/.test(it.css) && !/background-color:\s*rgba\([^)]*,\s*0(\.\d+)?\)/.test(it.css),
+          (it) => it.id >= b.start && it.layer === "over" && it.kind === "rect" && it.w * it.h >= area * 0.85 && (
+            (it.css.includes("backdrop-filter:") && !it.css.includes("backdrop-filter:none")) ||
+            (/rgba?\(/.test(it.css) && !/background-color:\s*rgba\([^)]*,\s*0+(\.0+)?\)/.test(it.css))
+          ),
         );
         if (!covered) backdrops.push({ x: b.r.left, y: b.r.top, w: b.r.width, h: b.r.height, key: b.key, color: pageBg.color });
       }
