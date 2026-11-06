@@ -1,0 +1,91 @@
+// CursorCraft: Live Swarm Rebuild for Firefox & Chromium browsers
+// Clicking the toolbar icon (or Alt+Shift+S) injects the swarm into the active tab.
+// Injecting again while it is running toggles it off.
+
+const api = typeof browser !== "undefined" ? browser : chrome;
+
+// For one screenshot frame, show only the pixels the DOM can't give back
+// (WebGL canvases, playing video, cross-origin iframes) so the swarm can crop them cleanly.
+const MEDIA_ONLY_CSS = `
+html body *:not(canvas):not(video):not(iframe):not(embed):not(object) { visibility: hidden !important; }
+html body canvas, html body video, html body iframe, html body embed, html body object { visibility: visible !important; }
+`;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function rebuild(tab) {
+  if (!tab || tab.id == null) return;
+  const target = { tabId: tab.id };
+  let hidden = false;
+  try {
+    const results = await api.scripting.executeScript({
+      target,
+      func: () => {
+        const running = !!(window.__swarmRebuild && window.__swarmRebuild.app);
+        let media = false;
+        if (!running) {
+          for (const el of document.querySelectorAll("canvas, video, iframe, embed, object")) {
+            const r = el.getBoundingClientRect();
+            if (r.width > 8 && r.height > 8 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth) {
+              media = true;
+              break;
+            }
+          }
+        }
+        return { running, media };
+      },
+    });
+    const probe = Array.isArray(results) ? results[0] : null;
+    const { running, media } = probe?.result || {};
+    if (!running && media) {
+      try {
+        await api.scripting.insertCSS({ target, css: MEDIA_ONLY_CSS });
+        hidden = true;
+        await sleep(90);
+        const shot = await api.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+        await api.scripting.executeScript({
+          target,
+          func: (s) => {
+            window.__swarmShot = s;
+            window.__swarmHidden = true;
+          },
+          args: [shot],
+        });
+      } catch (_) {
+        // no screenshot: those regions fall back to placeholders
+        if (hidden) {
+          await api.scripting.removeCSS({ target, css: MEDIA_ONLY_CSS }).catch(() => {});
+          hidden = false;
+        }
+      }
+    }
+    await api.scripting.executeScript({ target, files: ["swarm.js"] });
+  } catch (err) {
+    if (hidden) await api.scripting.removeCSS({ target, css: MEDIA_ONLY_CSS }).catch(() => {});
+    // Protected pages (about:, chrome://, AMO, PDFs) can't be scripted.
+    try {
+      await api.action.setBadgeBackgroundColor({ tabId: tab.id, color: "#F24822" });
+      await api.action.setBadgeText({ tabId: tab.id, text: "×" });
+      await api.action.setTitle({ tabId: tab.id, title: "CursorCraft can't run on this page" });
+      setTimeout(async () => {
+        try {
+          await api.action.setBadgeText({ tabId: tab.id, text: "" });
+          await api.action.setTitle({ tabId: tab.id, title: "CursorCraft (Alt+Shift+S)" });
+        } catch (_) {}
+      }, 2500);
+    } catch (_) {}
+  }
+}
+
+api.action.onClicked.addListener(rebuild);
+
+// The swarm asks us to restore the page once its own canvas fully covers it.
+api.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (msg && msg.type === "swarm:unhide" && sender.tab) {
+    api.scripting
+      .removeCSS({ target: { tabId: sender.tab.id }, css: MEDIA_ONLY_CSS })
+      .catch(() => {})
+      .then(() => reply(true));
+    return true;
+  }
+});
