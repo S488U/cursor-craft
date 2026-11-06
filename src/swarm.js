@@ -1483,8 +1483,9 @@
 .bg.on{opacity:1}
 .layer,.port{position:absolute;overflow:hidden;pointer-events:none}
 .layer{inset:0}
-.world{position:absolute;left:0;top:0;will-change:transform}
-.it{position:absolute;left:0;top:0;transform-origin:0 0}
+.world{position:absolute;left:0;top:0;will-change:transform;backface-visibility:hidden;transform:translate3d(0,0,0)}
+.it{position:absolute;left:0;top:0;transform-origin:0 0;backface-visibility:hidden}
+.it.t{text-rendering:geometricPrecision;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 .it.settle{transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 .r{background-color:var(--ph,#D9D9D9);transition:background-color .22s ease,border-radius .22s ease}
 .r.st{background-color:transparent}
@@ -1507,7 +1508,7 @@
 .ov{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none}
 .badges,.cursors{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .badge{position:absolute;transform:translate(-50%);padding:1px 4px;border-radius:2px;color:#fff;font:600 11px/16px Inter,system-ui,-apple-system,"Segoe UI",sans-serif;white-space:nowrap;font-variant-numeric:tabular-nums}
-.cursor{position:absolute;left:0;top:0;will-change:transform}
+.cursor{position:absolute;left:0;top:0;will-change:transform;backface-visibility:hidden}
 .cursor svg{position:absolute;overflow:visible;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.28))}
 .rulers{position:absolute;inset:0;pointer-events:none}
 .ruler{position:absolute;background:#2c2c2c;pointer-events:none}
@@ -1724,7 +1725,13 @@
 
     syncWorld() {
       const vp = this.vp;
-      this.world.style.transform = `translate(${-vp.sx}px,${-vp.sy}px)`;
+      const sx = Math.round(vp.sx);
+      const sy = Math.round(vp.sy);
+      if (this._lastSx === sx && this._lastSy === sy) return;
+      this._lastSx = sx;
+      this._lastSy = sy;
+      // rotate(0.02deg) prevents Firefox sub-pixel text re-snapping jitter
+      this.world.style.transform = `translate3d(${-sx}px,${-sy}px,0) rotate(0.02deg)`;
     }
 
     mount(model) {
@@ -1929,7 +1936,7 @@
         seen.add(c.id);
         const X = c.sticky ? c.x : c.x - vp.sx + vp.ox;
         const Y = c.sticky ? c.y : c.y - vp.sy + vp.oy;
-        el.style.transform = `translate(${f1(X)}px,${f1(Y)}px)`;
+        el.style.transform = `translate3d(${f1(X)}px,${f1(Y)}px,0)`;
         const svg = el.firstChild;
         if (el._shape !== c.shape) {
           svg.innerHTML = cursorSVG(c.shape, c.color);
@@ -3571,7 +3578,7 @@
       };
       const scrollTarget = this.env.isRoot ? window : this.env.scroller;
       on(scrollTarget, "scroll", () => {
-        if (!this.view.frozen) this.view.syncWorld();
+        if (!this.view.frozen && !this.tour) this.view.syncWorld();
       }, { passive: true });
       on(window, "resize", () => this.view.measure());
       on(window, "wheel", () => {
@@ -3682,7 +3689,9 @@
       if (this.tourAcc >= 1) {
         const d = Math.floor(this.tourAcc);
         this.tourAcc -= d;
-        this.env.scrollBy(d);
+        // Use scrollTo with an integer target to avoid sub-pixel drift
+        const dest = Math.round(g.sy + d);
+        this.env.scrollTo(dest);
       }
     }
 
