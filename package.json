@@ -1,0 +1,13 @@
+{
+  "name": "cursor-craft",
+  "version": "1.1.0",
+  "description": "Live swarm cursor webpage rebuilder for Firefox and Chromium browsers",
+  "scripts": {
+    "lint": "web-ext lint --source-dir src",
+    "build": "web-ext build --source-dir src --artifacts-dir dist --overwrite-dest",
+    "package": "./scripts/package.sh"
+  },
+  "devDependencies": {
+    "web-ext": "^8.4.0"
+  }
+}
