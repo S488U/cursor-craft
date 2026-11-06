@@ -1057,9 +1057,13 @@
       let zTop = ctx.zTop;
       let posd = ctx.posd;
       const pos = cs.position;
+      const pe = el.parentElement;
+      const flexItem = pos === "static" && pe && /flex|grid/.test(css(pe).display);
+      const zIndexVal = cs.zIndex !== "auto" ? parseInt(cs.zIndex, 10) : null;
+
       if (pos === "fixed" && layer !== "over") {
         // a negative z-index (at the root stacking context) paints behind the page, e.g. full-screen WebGL backdrops
-        layer = ctx.zTop == null && parseInt(cs.zIndex, 10) < 0 ? "under" : "over";
+        layer = ctx.zTop == null && !ctx.stackingCtx && zIndexVal !== null && zIndexVal < 0 ? "under" : "over";
         clip = viewClip;
       } else if (pos === "sticky" && layer === "world") {
         // stuck (or sitting exactly where it would stick) at the top of its scroller
@@ -1069,15 +1073,47 @@
           clip = viewClip;
         }
       }
-      // z-index counts for positioned boxes and for flex/grid items (even when static)
-      const pe = el.parentElement;
-      const flexItem = pos === "static" && pe && /flex|grid/.test(css(pe).display);
-      if (pos !== "static" || flexItem) {
-        if (cs.zIndex !== "auto") {
-          if (zTop == null) zTop = parseInt(cs.zIndex, 10) || 0;
-        } else if (pos !== "static") posd = true;
+
+      const isStackCtx =
+        el !== html &&
+        el !== body &&
+        (cs.isolation === "isolate" ||
+          (pos !== "static" && zIndexVal !== null) ||
+          (flexItem && zIndexVal !== null) ||
+          cs.transform !== "none" ||
+          parseFloat(cs.opacity) < 1 ||
+          cs.filter !== "none" ||
+          cs.perspective !== "none" ||
+          cs.contain === "paint" ||
+          cs.mixBlendMode !== "normal");
+
+      let keyFn;
+      let nextStackCtx = ctx.stackingCtx;
+
+      if (ctx.stackingCtx) {
+        // Inside an isolated stacking context, negative z-indexes paint after parent background
+        // but before normal flow items, and never drop below the parent's base key
+        const base = ctx.stackingCtx.baseKey;
+        if (zIndexVal !== null && zIndexVal < 0) {
+          keyFn = () => base + 100000 + zIndexVal * 1000 + order++;
+        } else if (pos !== "static" || flexItem) {
+          keyFn = () => base + 300000 + (zIndexVal || 0) * 1000 + order++;
+        } else {
+          keyFn = () => base + 200000 + order++;
+        }
+      } else {
+        // Root stacking context
+        if (pos !== "static" || flexItem) {
+          if (zIndexVal !== null) {
+            if (zTop == null) zTop = zIndexVal;
+          } else if (pos !== "static") posd = true;
+        }
+        keyFn = () => (zTop || 0) * 1e7 + (posd ? 5e6 : 0) + order++;
       }
-      const keyFn = () => (zTop || 0) * 1e7 + (posd ? 5e6 : 0) + order++;
+
+      if (isStackCtx && !ctx.stackingCtx) {
+        nextStackCtx = { baseKey: (zTop || 0) * 1e7 + (posd ? 5e6 : 0) + order };
+      }
       if (layer === "over" && ctx.layer !== "over" && r.top <= 4 && r.width >= vw * 0.8 && r.height > 20 && r.height <= 200) {
         bars.push({ node: null, r, start: items.length, key: (zTop || 0) * 1e7 + (posd ? 5e6 : 0) + order - 0.5 });
       }
@@ -1126,7 +1162,7 @@
         }
       }
       const blend = cs.mixBlendMode !== "normal" ? cs.mixBlendMode : ctx.blend;
-      const kctx = { op, layer: kidLayer, clip: kidClip, zTop, posd, boxItem, key: keyFn, blend };
+      const kctx = { op, layer: kidLayer, clip: kidClip, zTop, posd, boxItem, key: keyFn, blend, stackingCtx: nextStackCtx };
 
       // Decide: one text leaf, or a mix of text runs and nested blocks.
       // Closed <details> and content-visibility:hidden still report real boxes for
@@ -1207,7 +1243,7 @@
 
     const rootLayer = env.isRoot ? "world" : "under";
     const rootClip = env.isRoot ? fullClip : viewClip;
-    walk(html, { op: 1, layer: rootLayer, clip: rootClip, zTop: null, posd: false, boxItem: null }, null);
+    walk(html, { op: 1, layer: rootLayer, clip: rootClip, zTop: null, posd: false, boxItem: null, stackingCtx: null }, null);
 
     // --------------------------------------------- repeated components (dup)
     const groups = [];
@@ -3534,12 +3570,18 @@
         const g = this.env.geom();
         shot.valid = Math.abs(g.sx - shot.sx) < 1 && Math.abs(g.sy - shot.sy) < 1;
       }
+      const snapStyle = document.createElement("style");
+      snapStyle.id = "__swarm_snap_override";
+      snapStyle.textContent = "*:not(swarm-rebuild):not(swarm-rebuild *) { animation: none !important; transition: none !important; }";
+      document.head.appendChild(snapStyle);
       let model;
       try {
         model = captureModel(this.env, shot);
       } catch (err) {
         console.error("[swarm-rebuild] capture failed", err);
         model = { items: [], tasks: [], groups: [], guides: [], docW: 0, docH: 0 };
+      } finally {
+        snapStyle.remove();
       }
       mark("capture");
       if (this.dead) return;
