@@ -19,4 +19,4 @@ CursorCraft does not collect, store, sell or transmit any personal data.
 
 ## Contact
 
-Questions: open an issue at <https://github.com/DhvanilPatel/swarm-cursors/issues>.
+Questions: open an issue at <https://github.com/S488U/cursor-craft/issues>.

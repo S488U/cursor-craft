@@ -42,7 +42,7 @@ There's a self-contained test page in [`demo/index.html`](demo/index.html) (an i
    - boxes with fills, borders, radii, shadows, gradients, masks and backdrop blur → **rects**
    - text blocks → **text layers**, cloned with their computed styles (fonts, links, inline code, icons, `::before`/`::after`)
    - single-side borders and `<hr>` → **pen-tool lines**
-   - `<img>`, `<svg>`, `<video>`, `<canvas>`, iframes → **media**. WebGL canvases, playing video and cross-origin iframes are cropped from a screenshot taken at click time while only those elements are visible.
+   - `<img>`, `<picture>`, `<svg>`, `<video>`, `<canvas>`, iframes → **media**. WebGL canvases, playing video and cross-origin iframes are cropped from a screenshot taken at click time while only those elements are visible.
    - repeated siblings (nav links, cards, list rows, logos) → one **master** plus **duplicates**
    - shared left edges and baselines → **ruler guides** that text snaps to
 2. **Blank.** A full-viewport layer, isolated from the page's CSS in a shadow root, covers the page with its own background color. A quick hidden scroll pass first triggers lazy images and reveal-on-scroll content.
@@ -82,4 +82,4 @@ When ready to submit to Mozilla Add-ons, `./scripts/package.sh` writes `dist/cur
 
 ## Status & License
 
-This is currently a private port awaiting permission from the original authors ([Joel Califa](https://joelcalifa.com) and [Dhvanil Patel](https://github.com/DhvanilPatel)). The repository and extension will only be made public and submitted to Mozilla Add-ons once their permission is obtained.
+This is an open-source port published with permission from the original authors ([Joel Califa](https://joelcalifa.com) and [Dhvanil Patel](https://github.com/DhvanilPatel)).
