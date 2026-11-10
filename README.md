@@ -4,7 +4,7 @@ A Firefox extension that wipes any web page to a blank canvas and lets a swarm o
 
 ![CursorCraft rebuilding a page](media/demo.gif)
 
-[Full demo video (36s)](media/demo.mp4) · [Demo with sound (60s)](media/demo-with-sound.mp4)
+[Install on Firefox](https://addons.mozilla.org/en-US/firefox/addon/cursorcraft-live-swarm-rebuild/) · [Full demo video (36s)](media/demo.mp4) · [Demo with sound (60s)](media/demo-with-sound.mp4)
 
 ## Credit
 
@@ -15,6 +15,12 @@ The motion design is Joel Califa's: the cursor set, the swarm and flocking physi
 Go look at the originals. They are better than this.
 
 ## Install
+
+### Firefox Add-ons (Recommended)
+
+Install directly from **[addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/cursorcraft-live-swarm-rebuild/)**.
+
+### Local Development
 
 To run the extension locally:
 
@@ -76,9 +82,9 @@ There's a self-contained test page in [`demo/index.html`](demo/index.html) (an i
 - Web components are rebuilt as plain styled elements, so none of the page's scripts run inside the swarm's layer.
 - Very long pages are capped at about 4,000 layers / 40,000px.
 
-## Publishing
+## Firefox Add-on & Packaging
 
-When ready to submit to Mozilla Add-ons, `./scripts/package.sh` writes `dist/cursor-craft-<version>.zip` and `.xpi` for the [Firefox Add-on Developer Hub](https://addons.mozilla.org/developers/). The privacy policy is [`PRIVACY.md`](PRIVACY.md).
+CursorCraft is available on the [Firefox Add-on Store](https://addons.mozilla.org/en-US/firefox/addon/cursorcraft-live-swarm-rebuild/). To build the release packages locally, `./scripts/package.sh` writes `dist/cursor-craft-<version>.zip` and `.xpi`. The privacy policy is [`PRIVACY.md`](PRIVACY.md).
 
 ## Status & License
 
